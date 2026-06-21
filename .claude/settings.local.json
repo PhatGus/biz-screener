@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest biz-screener --typescript --tailwind --app --no-src-dir --import-alias \"@/*\")",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npx vercel --yes)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
