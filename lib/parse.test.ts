@@ -62,6 +62,20 @@ describe("stripJsonFences", () => {
       validMemo,
     );
   });
+
+  it("extracts a balanced object when trailing prose contains braces", () => {
+    const noisy = `Here is the memo:\n${validJson}\nNote: verify {licensing} details.`;
+    expect(JSON.parse(stripJsonFences(noisy))).toEqual(validMemo);
+  });
+
+  it("does not capture braces inside string values", () => {
+    const memoWithBraces = {
+      ...validMemo,
+      regional_notes: "PA licensing { see board } applies here.",
+    };
+    const json = JSON.stringify(memoWithBraces);
+    expect(JSON.parse(stripJsonFences(json))).toEqual(memoWithBraces);
+  });
 });
 
 describe("parseDealMemo", () => {

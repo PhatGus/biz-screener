@@ -53,7 +53,18 @@ export default function Screener() {
         return { ...doc, id: `doc-${docCounter++}`, size: f.size };
       }),
     );
-    setDocs((prev) => [...prev, ...entries]);
+    // De-duplicate by name+size so re-adding the same file doesn't double the
+    // document (and its token cost) in the request.
+    setDocs((prev) => {
+      const seen = new Set(prev.map((d) => `${d.name}:${d.size}`));
+      const fresh = entries.filter((e) => {
+        const key = `${e.name}:${e.size}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return [...prev, ...fresh];
+    });
   }
 
   function handleRemoveDoc(id: string) {
@@ -80,7 +91,7 @@ export default function Screener() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ listingText: frozenListing, documents }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error ?? "Analysis failed.");
 
       setMemo(json.memo as DealMemo);
@@ -113,7 +124,7 @@ export default function Screener() {
           messages: nextThread,
         }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error ?? "Could not answer.");
 
       setChat((prev) => [
@@ -123,7 +134,12 @@ export default function Screener() {
     } catch (err) {
       setChatError(err instanceof Error ? err.message : "Could not answer.");
       // Drop the unanswered user message so the thread can be retried cleanly.
-      setChat((prev) => prev.slice(0, -1));
+      // Match by identity so a concurrently-resolved reply isn't removed.
+      setChat((prev) =>
+        prev.length && prev[prev.length - 1] === nextThread[nextThread.length - 1]
+          ? prev.slice(0, -1)
+          : prev,
+      );
     } finally {
       setChatLoading(false);
     }
@@ -173,6 +189,29 @@ export default function Screener() {
       </div>
     </div>
   );
+}
+
+/**
+ * Read a fetch Response as JSON, tolerating non-JSON error bodies (proxy 5xx
+ * HTML, empty timeout responses). Falls back to a status-derived message so the
+ * raw SyntaxError is never surfaced to the user.
+ */
+async function readJson(
+  res: Response,
+): Promise<{ error?: string; [key: string]: unknown }> {
+  const text = await res.text();
+  if (!text) {
+    return res.ok ? {} : { error: `Request failed (HTTP ${res.status}).` };
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: res.ok
+        ? "Received a malformed response from the server."
+        : `Request failed (HTTP ${res.status}).`,
+    };
+  }
 }
 
 function EmptyState() {

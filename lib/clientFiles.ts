@@ -27,13 +27,18 @@ export function fileToDealDocument(file: File): Promise<DealDocument> {
     reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
     reader.onload = () => {
       const result = reader.result as string;
-      // result is a data URL: "data:<mime>;base64,<data>"
+      // result is a data URL: "data:<mime>;base64,<data>". Reject anything that
+      // doesn't have the expected shape rather than forwarding the prefix as
+      // (invalid) base64, which the API would silently choke on.
       const comma = result.indexOf(",");
-      const data = comma >= 0 ? result.slice(comma + 1) : result;
+      if (comma < 0) {
+        reject(new Error(`Could not encode ${file.name}`));
+        return;
+      }
       resolve({
         name: file.name,
         mediaType: file.type,
-        data,
+        data: result.slice(comma + 1),
       });
     };
     reader.readAsDataURL(file);

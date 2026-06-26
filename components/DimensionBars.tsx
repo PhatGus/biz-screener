@@ -38,7 +38,7 @@ export default function DimensionBars({
               <div className="mb-1.5 flex items-baseline justify-between">
                 <span className="text-sm text-slate-200">{label}</span>
                 <span className="font-mono text-sm">
-                  <span className={scoreColor(clamped)}>{raw}</span>
+                  <span className={scoreColor(clamped)}>{clamped}</span>
                   <span className="text-slate-500"> / 10</span>
                 </span>
               </div>

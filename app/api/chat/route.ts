@@ -42,6 +42,16 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  // Validate the thread at the trust boundary: every entry must be a
+  // well-formed user/assistant message with string content. This prevents an
+  // unhandled deref on malformed input and stops invalid roles (e.g. "system")
+  // or non-string content from reaching the Anthropic messages array.
+  if (!history.every(isValidChatMessage)) {
+    return NextResponse.json(
+      { error: "Malformed conversation thread." },
+      { status: 400 },
+    );
+  }
   if (history.length === 0 || history[history.length - 1].role !== "user") {
     return NextResponse.json(
       { error: "The last message must be a question from the user." },
@@ -95,6 +105,16 @@ export async function POST(req: Request) {
       { status: statusFor(err) },
     );
   }
+}
+
+function isValidChatMessage(m: unknown): m is ChatMessage {
+  return (
+    typeof m === "object" &&
+    m !== null &&
+    ((m as ChatMessage).role === "user" ||
+      (m as ChatMessage).role === "assistant") &&
+    typeof (m as ChatMessage).content === "string"
+  );
 }
 
 function statusFor(err: unknown): number {

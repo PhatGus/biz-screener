@@ -16,14 +16,54 @@ export function stripJsonFences(raw: string): string {
   text = text.replace(/\n?```\s*$/, "");
   text = text.trim();
 
-  // If there is still surrounding prose, slice from the first { to the last }.
-  const first = text.indexOf("{");
-  const last = text.lastIndexOf("}");
-  if (first !== -1 && last !== -1 && last > first) {
-    text = text.slice(first, last + 1);
+  // If there is surrounding prose, extract the first balanced { ... } object.
+  // A naive first-{ to last-} slice breaks when trailing prose contains a brace
+  // (e.g. "...} Note: verify {licensing} details"), so scan with depth tracking
+  // that respects strings and escapes.
+  const obj = extractBalancedObject(text);
+  return (obj ?? text).trim();
+}
+
+/**
+ * Return the first complete, brace-balanced JSON object substring, or null if
+ * there is no balanced object. String contents (including braces inside quotes)
+ * and escape sequences are ignored while tracking depth.
+ */
+function extractBalancedObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
   }
 
-  return text.trim();
+  return null;
 }
 
 /** Parse and structurally validate the model output into a DealMemo. */
