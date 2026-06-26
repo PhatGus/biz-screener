@@ -1,0 +1,23 @@
+export default function DiligenceList({ items }: { items: string[] }) {
+  return (
+    <div className="panel panel-pad">
+      <div className="mb-3 label-mono">Diligence Priorities</div>
+      {items.length === 0 ? (
+        <p className="text-xs italic text-slate-500">None specified.</p>
+      ) : (
+        <ol className="flex flex-col gap-2.5">
+          {items.map((item, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-accent/30 bg-accent/10 font-mono text-xs font-semibold text-accent">
+                {i + 1}
+              </span>
+              <span className="text-sm leading-relaxed text-slate-200">
+                {item}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
